@@ -3,12 +3,15 @@
 A project from Alex Edwards - Let's GO  
 I used to learn GO web development
 
-## Info on logging
+## Logging basics
 
-Application by default will log INFO logs to stsout and ERROR logs to sdterr  
+Application by default will log:  
+INFO logs -> stsout  
+ERROR logs -> sdterr  
+
 To write app logs to file run it like this:  
-```$ go run ./cmd/web >>/tmp/info.log 2>>/tmp/error.log```
+```$ go run ./cmd/web >>./info.log 2>>./error.log```
 
-**Additional Info:**
+### Additional Info
 
 [Better Go Router](https://web.archive.org/web/20211209224931/https://blog.merovius.de/2017/06/18/how-not-to-use-an-http-router.html)
