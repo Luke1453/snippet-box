@@ -19,3 +19,6 @@
 
 # Go workspace file
 go.work
+
+# Debugger generated binary
+__debug_bin*
