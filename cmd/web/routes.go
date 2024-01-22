@@ -11,7 +11,7 @@ func (app *application) routes() http.Handler {
 	router := httprouter.New()
 
 	// Custom 404 handler
-	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		app.notFound(w)
 	})
 
@@ -19,11 +19,14 @@ func (app *application) routes() http.Handler {
 	fileServer := http.FileServer(http.Dir(app.config.staticDir))
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
 
+	// setup dynamic route middleware
+	dynamic := alice.New(app.sessionManager.LoadAndSave)
+
 	// setting up routing and request handling
-	router.HandlerFunc(http.MethodGet, "/", app.home)
-	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippedView)
-	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreate)
-	router.HandlerFunc(http.MethodPost, "/snippet/create", app.snippetCreatePost)
+	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
+	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippedView))
+	router.Handler(http.MethodGet, "/snippet/create", dynamic.ThenFunc(app.snippetCreate))
+	router.Handler(http.MethodPost, "/snippet/create", dynamic.ThenFunc(app.snippetCreatePost))
 
 	// better approach for layering middleware
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)

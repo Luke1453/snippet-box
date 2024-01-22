@@ -7,9 +7,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"snippet.devlake.xyz/internal/models"
 
+	"github.com/alexedwards/scs/mysqlstore"
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -20,11 +24,13 @@ type config struct {
 }
 
 type application struct {
-	config        *config
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
+	config         *config
+	errorLog       *log.Logger
+	infoLog        *log.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
 func main() {
@@ -32,7 +38,12 @@ func main() {
 	var cfg config
 	flag.StringVar(&cfg.addr, "addr", ":4000", "HTTP network address")
 	flag.StringVar(&cfg.staticDir, "static-dir", "./ui/static", "Path to static assets")
-	flag.StringVar(&cfg.dsn, "dsn", "web:pass@tcp(localhost:32769)/snippetbox?parseTime=true", "MySQL data source name")
+	flag.StringVar(
+		&cfg.dsn,
+		"dsn",
+		"web:pass@tcp(localhost:32769)/snippetbox?parseTime=true",
+		"MySQL data source name")
+
 	flag.Parse()
 
 	// setting up custom loggers
@@ -53,13 +64,23 @@ func main() {
 		errorLog.Fatal(err)
 	}
 
+	// init form decoder
+	formDecoder := form.NewDecoder()
+
+	// init session manager
+	sessionManager := scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 4 * time.Hour
+
 	// setting up application
 	app := &application{
-		config:        &cfg,
-		errorLog:      errorLog,
-		infoLog:       infoLog,
-		snippets:      &models.SnippetModel{DB: db},
-		templateCache: templateCache,
+		config:         &cfg,
+		errorLog:       errorLog,
+		infoLog:        infoLog,
+		snippets:       &models.SnippetModel{DB: db},
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
 	}
 
 	// starting the server

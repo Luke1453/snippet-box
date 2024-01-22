@@ -2,10 +2,34 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime/debug"
+
+	"github.com/go-playground/form/v4"
 )
+
+func (app *application) decodePostForm(r *http.Request, dst any) error {
+	// Parse form
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+
+	// Decode decode
+	err = app.formDecoder.Decode(dst, r.PostForm)
+	if err != nil {
+		// if incorrect type of destination throw panic
+		var invalidDecoderError *form.InvalidDecoderError
+		if errors.As(err, &invalidDecoderError) {
+			panic(err)
+		}
+		// else return error
+		return err
+	}
+	return nil
+}
 
 func (app *application) serverError(w http.ResponseWriter, err error) {
 	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
