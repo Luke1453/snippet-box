@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode/utf8"
+
+	"snippet.devlake.xyz/internal/models"
+	"snippet.devlake.xyz/internal/validator"
 
 	"github.com/julienschmidt/httprouter"
-	"snippet.devlake.xyz/internal/models"
 )
 
 type snippetCreateForm struct {
-	Title       string
-	Content     string
-	Expires     int
-	FieldErrors  map[string]string
+	Title   string
+	Content string
+	Expires int
+	validator.Validator
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +36,7 @@ func (app *application) snippedView(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
 
 	id, err := strconv.Atoi(params.ByName("id"))
-	if err != nil || id < 1 { 
+	if err != nil || id < 1 {
 		app.notFound(w)
 		return
 	}
@@ -82,30 +82,29 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	}
 
 	form := snippetCreateForm{
-		Title:			r.PostForm.Get("title"),
-		Content:		r.PostForm.Get("content"),
-		Expires:		expires,
-		FieldErrors:	map[string]string{},
+		Title:   r.PostForm.Get("title"),
+		Content: r.PostForm.Get("content"),
+		Expires: expires,
 	}
 
 	// validate form values
-	if strings.TrimSpace(form.Title) == "" {
-		form.FieldErrors["title"] = "Title cannot be blank"
-	}else if utf8.RuneCountInString(form.Title) > 100 {
-		form.FieldErrors["title"] = "Title cannot be longer than 100 characters"
-	}
-	
-	if strings.TrimSpace(form.Content) == ""{
-		form.FieldErrors["content"] = "Content cannot be empty"
-	}
+	form.CheckField(validator.NotBlank(form.Title), "title", "Title cannot be blank")
+	form.CheckField(
+		validator.MaxChars(form.Title, 100),
+		"title",
+		"Title cannot be longer than 100 characters",
+	)
 
-	if form.Expires != 1 && form.Expires != 7 && form.Expires != 365 && form.Expires != 1095 {
-		form.FieldErrors["expires"] = "Expires must be equal to 1, 7, 365, or 1095 days"
-	} 
+	form.CheckField(validator.NotBlank(form.Content), "content", "Content cannot be blank")
+	form.CheckField(
+		validator.PermittedInt(form.Expires, 1, 7, 365, 1095),
+		"expires",
+		"Expires must be equal to 1, 7, 365, or 1095 days",
+	)
 
-	// if there are any validation errors re-render create snippet templateCache
+	// if there are any validation errors re-render create snippet template
 	// with user values and validation errors
-	if len(form.FieldErrors) > 0 {
+	if !form.Valid() {
 		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
