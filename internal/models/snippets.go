@@ -7,11 +7,11 @@ import (
 )
 
 type Snippet struct {
-	ID      int
-	Title   string
-	Content string
 	Created time.Time
 	Expires time.Time
+	Title   string
+	Content string
+	ID      int
 }
 
 type SnippetModel struct {
