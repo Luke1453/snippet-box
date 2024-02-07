@@ -1,9 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/justinas/nosurf"
 )
+
+// Middleware to secure forms vournable to CSRF (Cross-site request forgery)
+// By using customised CSRF cookie
+func noSurf(next http.Handler) http.Handler {
+	csrfHandler := nosurf.New(next)
+	csrfHandler.SetBaseCookie(http.Cookie{
+		HttpOnly: true,
+		Path:     "/",
+		Secure:   true,
+	})
+	return csrfHandler
+}
 
 // Middleware to add security headers to the request response
 func secureHeaders(next http.Handler) http.Handler {
@@ -15,6 +30,47 @@ func secureHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "deny")
 		w.Header().Set("X-XSS-Protection", "0")
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// redirect user to login if not authenticated
+		if !app.isAuthenticated(r) {
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			return
+		}
+
+		// set the "Cache-Control: no-store" header so that pages
+		// require authentication and are not stored in the users browser cache
+		w.Header().Add("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Middleware that check is user exists and addthi it to request context
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get userID from session info
+		id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+		if id == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check DB if user exists
+		exists, err := app.users.Exist(id)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+
+		// If user exists, change request context
+		if exists {
+			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
+			r = r.WithContext(ctx)
+		}
 		next.ServeHTTP(w, r)
 	})
 }

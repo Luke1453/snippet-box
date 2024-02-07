@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/justinas/nosurf"
 	"snippet.devlake.xyz/internal/models"
 )
 
@@ -14,17 +15,21 @@ import (
 // At the moment it only contains one field, but we'll add more
 // to it as the build progresses.
 type templateData struct {
-	Form        any
-	Snippet     *models.Snippet
-	Flash       string
-	Snippets    []*models.Snippet
-	CurrentYear int
+	Form            any
+	Snippet         *models.Snippet
+	Flash           string
+	CSRFToken       string
+	Snippets        []*models.Snippet
+	CurrentYear     int
+	IsAuthenticated bool
 }
 
 func (app *application) newTemplateData(r *http.Request) *templateData {
 	return &templateData{
-		CurrentYear: time.Now().Year(),
-		Flash:       app.sessionManager.PopString(r.Context(), "flash"),
+		CurrentYear:     time.Now().Year(),
+		IsAuthenticated: app.isAuthenticated(r),
+		Flash:           app.sessionManager.PopString(r.Context(), "flash"),
+		CSRFToken:       nosurf.Token(r),
 	}
 }
 

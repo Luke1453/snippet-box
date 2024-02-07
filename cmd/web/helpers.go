@@ -31,6 +31,14 @@ func (app *application) decodePostForm(r *http.Request, dst any) error {
 	return nil
 }
 
+func (app *application) isAuthenticated(r *http.Request) bool {
+	isAuthenticated, ok := r.Context().Value(isAuthenticatedContextKey).(bool)
+	if !ok {
+		return false
+	}
+	return isAuthenticated
+}
+
 func (app *application) serverError(w http.ResponseWriter, err error) {
 	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
 	app.errorLog.Output(2, trace)
