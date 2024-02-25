@@ -89,7 +89,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 
 	form.CheckField(validator.NotBlank(form.Content), "content", "Content cannot be blank")
 	form.CheckField(
-		validator.PermittedInt(form.Expires, 1, 7, 365, 1095),
+		validator.PermittedValue(form.Expires, 1, 7, 365, 1095),
 		"expires",
 		"Expires must be equal to 1, 7, 365, or 1095 days",
 	)
