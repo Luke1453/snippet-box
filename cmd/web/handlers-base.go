@@ -115,3 +115,8 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	// return response
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
+
+// Custom handler for testing purposes
+func ping(w http.ResponseWriter, _ *http.Request) {
+	w.Write([]byte("OK"))
+}
